@@ -12,7 +12,8 @@ For example a function to calculate the sine of a number ready for transpiling m
     }
 
 In this example the typename identifier "FLOAT" means nothing to C++ but could tell the transpiler that it should generate two functions for C: a float version, and a double version.
-Building & Maintaining the Library
+
+## Building & Maintaining the Library
 
 If this library is to be widely used and developed, it should use a permissive open source licence.  Use of a restrictive open source licence such as the GPL would create a fork where commercial code would need to have their own implementations which would significantly reduce the utility of the library.
 
@@ -28,7 +29,7 @@ Backwards compatibility issues could be resolved in the following ways:
 
 2. Converters could be written to fully or partially upgrade existing code bases to use newer versions of the library.  These converters could take advantage in the LLVM tool chain which already brings functionality that can be used here (language parsers, code layout tools). However, given the hopefully large number of target languages this may not to be available for all languages, for all changes for all versions.
 
-# The Benefits
+## The Benefits
 
 This library would bring a myriad of benefits:
 
