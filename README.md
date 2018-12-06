@@ -1,18 +1,6 @@
-# The Problem
-
-Every new year brings another programming language each with its own standard library and its own library ecosystem. The popularity of each language waxes and wanes but over time the number of live languages grows. For programmers this means (re-)learning how strings are manipulated, how arrays and maps are built and traversed, how dates and times are handled, and the myriad of other operations. For language authors whose desire is to create a language, creating a standard library is a monumental distraction.
-
-As a result most languages lack extensive libraries. The C language has a bare bones library without even a safe string abstraction; C++ is better still - and very slowly getting better - but lacks basic computer science abstractions such as trees, graphs and rarer constructs like bloom filters; Java has an extensive library but even that has holes that are plugged by third party toolkit libraries such as Apache Commons and Guava. Languages are hard enough to design and maintain without worrying about core library support.
-
-Third party libraries help but these need to be written for each language and are there often multiple implementations for each because none can claim to be canon. There are over 150 JSON library implementations listed on json.org, with over 25 for Java alone, and this doesn't include custom implementations in project code bases.
-
-One issue with having multiple implementations for low level common functionality (e.g. JSON parsing) is that it's not uncommon for large projects to pull in multiple implementations of the same functionality, often forcing large projects to work with multiple implementations (and sometimes multiple versions of) and multiple interfaces for the same thing.
-
-Another issue is that often it's painful finding and pulling in third party libraries into your build tool chain. You need to research and choose the "right" third party library, you need to update your build tool chain to pull in the library, you need to update all of those libraries periodically, and as the number of dependent libraries grow the number of dependencies between those libraries scales quadratically causing their own problems. Another issue is that higher level libraries often have their own approaches for identifier naming, coding style, documentation, error handling, translation, logging and memory management that may not be compatible with your project.
-
 # Project Alexandria
 
-A solution to this is project Alexandria. This is an extensive library containing both low level primitives and new, higher level components that can be transpiled to as many languages idiomatically as possible.
+Project Alexandria is a universal library that transpiles to multiple languages. This allows a library to be written in a single langauge and made available to multiple target languages through the process of transpilation which takes source code in one language and converts it to multiple target languages. This project solves the current issue where frequently third party libraries are written multiple times for multiple languages. The website json.org lists over 150 implementations of JSON alone.
 
 This project will be written in an existing, but potentially annotated programming language. The use of an existing language is to help simply the project, make it easier to re-use existing code for the library, and re-use existing tools. We could leverage the LLVM tool chain to create a tool that parses annotated C++ library code that transpiles the code and creates releasable libraries/modules in each target languages (e.g Python packages, Ruby gems, Java mavern and gradle artifacts, Perl modules, C/C++ libraries etc).
 
