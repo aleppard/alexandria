@@ -23,7 +23,7 @@ concurrency
     debug mutexes
     re-entrant mutexes
     spin mutexes
-  parallelerisation functions
+  parallelisation functions
   priority queue
   processes
   threading
