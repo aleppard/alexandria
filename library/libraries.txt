@@ -1,5 +1,5 @@
-A very incomplet list of proposed libraries
--------------------------------------------
+A very incomplete list of proposed libraries
+--------------------------------------------
 
 AI
   GA
