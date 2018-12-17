@@ -1,0 +1,229 @@
+A very incomplet list of proposed libraries
+-------------------------------------------
+
+AI
+  GA
+  GP
+  machine learning
+
+algorithms
+  partition
+  sort
+  search
+    binary search
+    proportional search
+
+caching
+  buffers
+  circular buffers
+
+concurrency
+  condition variables
+  mutexes
+    debug mutexes
+    re-entrant mutexes
+    spin mutexes
+  parallelerisation functions
+  priority queue
+  processes
+  threading
+    threads
+    thread group
+  vectoring
+  
+compression
+  bitmap compression
+
+cryptography
+  MAC
+  certificates
+  encryption
+  digital signatures, group signatures
+  cryptographic hashes
+  merkle trees
+  "password" hashes
+    bcrypt
+  random number gneeration
+  zero knowlege algorithms
+
+data structures
+  array/vector
+  bitmaps
+    bloom filters
+    compression
+  "combination structures" (made up of combination of primitive structures).
+  forests
+  graph
+    DAG
+  grid
+  hash tables
+  "large data stuctures" (i.e. too big to fit in memory).
+  lock free data structures
+  list
+    skip lists
+  maps & bimaps
+  pair/tuple
+  prefix tree
+  queues
+  set
+  stacks/deques
+  tree
+   AVL tree
+   B+tree
+   B-tree
+   Red-block tree
+   prefix tree
+
+date & time
+  date
+  date with time
+  date parsing
+  time
+  time zone
+  timer
+
+dimension
+  metric, imperial measurements & conversions
+
+error handling & logging
+  asserts & debugging
+
+file & filesystem & I/O
+  file locks
+  file path
+  directory traversal
+  buffered & umbuffered file access
+  virtual file system
+
+formats & protocols
+  csv
+  json
+  xml
+  yaml
+
+formatting
+  layout
+   LaTeX
+
+graphics
+  colour
+  fonts
+  image formats
+    png etc
+    large format
+  geometry
+  (layout)
+  2D images
+    graphing
+    geometry    
+    animation
+  3D images
+    geometry  
+    graphing
+  vector
+    svg
+  video
+    
+language
+  parsing
+  text to speech
+  speech recognition?
+
+locale
+  currency
+  locale
+  i8ln
+   number from/to string
+
+maths
+  arbitrary percision
+  big number
+  complex numbers, quaternions, octonions.
+  factoring & prime number tests
+  FFT
+  geometry
+    2D, 3D, n-dimensional?
+  logic, symbols & fractions
+    integration/differentiation
+    solver
+  markov chains
+  matrices & tensors
+    sparse matrix
+  modulo arithmetic
+  non-standard numeric type sizes (e.g. array of 4 bits, a 128 bit float etc).
+  polar coordinates
+  polynomials
+    chebyshev
+  pseudo-random number generation
+  range
+     to/from include,exclusive
+  rolling hashes
+  regression
+  statistics
+    distributions
+    linear regression
+    histogram
+  trigonometry
+  vector/array maths
+  
+memory management
+  heap management
+  shared memory APIs
+
+network
+  ipv4/v6
+  sockets
+  client & servers
+
+parser
+  tokeniser
+  parser
+  (math symbolic parser)
+
+reflection
+
+regular expressions
+
+science
+  coordinate systems
+  (dimension)
+
+scripting integration
+
+sequences
+
+serialisation
+  base64
+  b+ tree
+  checksum
+    crc
+  endian conversion
+  storage/transmission protocol
+
+sound
+
+string
+  canonical strings / flyweight pattern
+  fixed length strings
+  string builders
+  string manpilatuion
+  string formatting
+  string search algorithms
+
+test harness
+
+UI
+  (layout)  
+  terminal
+    argument parsing
+    command history
+    (layout)
+
+versioning & Identification
+   semantic version number
+   UUID
+
+web
+  css
+  http/https
+  (layout)
