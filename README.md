@@ -4,14 +4,32 @@ Project Alexandria is a universal library that transpiles to multiple languages.
 
 This project will be written in an existing, but potentially annotated programming language. The use of an existing language is to help simply the project, make it easier to re-use existing code for the library, and re-use existing tools. We could leverage the LLVM tool chain to create a tool that parses annotated C++ library code that transpiles the code and creates releasable libraries/modules in each target languages (e.g Python packages, Ruby gems, Java mavern and gradle artifacts, Perl modules, C/C++ libraries etc).
 
-For example a function to calculate the sine of a number ready for transpiling may look like:
+For example a function to calculate the sine of a number ready for transpiling might look like:
 
-    template <typename FLOAT> FLOAT sin(FLOAT argument)
-    {
-     // Implementation...
-    }
+   template<typename DOUBLE> DOUBLE sin(DOUBLE x) {}
+   template<typename FLOAT> FLOAT sin(FLOAT x) {}
 
-In this example the typename identifier "FLOAT" means nothing to C++ but could tell the transpiler that it should generate two functions for C: a float version, and a double version.
+The template names FLOAT and DOUBLE can tell the transpiler how to convert these to different languages.
+
+For example in languages such as Python that do not let the user specify the type, it may output a single function:
+
+   def sin(x)
+
+For languages such as C++ that do specify types and have function overloading it may produce two functions with the same name, e.g.
+
+   double sin(double x)
+   float sin(float x) 
+
+For languages such as C that do specify types and do not have function overloading it may produce two functions with different names, e.g.
+
+   double sin(double x)
+   float sinf(float x)
+
+If a single C++ implementation can generate a float and a double
+version, then this can be reflected by the template parameter name,
+e.g.
+
+   template<typename FLOAT_DOUBLE> FLOAT_DOUBLE cos(FLOAT_DOUBLE x)
 
 ## Building & Maintaining the Library
 
