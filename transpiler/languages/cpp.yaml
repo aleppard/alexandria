@@ -1,0 +1,52 @@
+name: C++
+extension: cpp
+# variants: with exceptions, without exceptions, with templates, without templates
+header_file: yes
+block-start-end: {,}
+comment: ///
+module-identifier: no
+generics: yes
+namespace-identifier: namespace NAME
+sruct-identifier: struct NAME
+classes: yes
+  identifier: class NAME
+  privacy: block
+  required: no
+  public-private-identifier: public,none
+functions:
+  identifier: none
+  public-private-identifier: none
+  static-identifier: static
+  multiple-return: false
+  overloading: true  
+variables:
+  identifier: none
+  const-identifier: const
+  mutable-identifier: none  
+operators:
+  and-or: &&, ||
+  pre-post-increment: yes
+  increment: yes
+  overloading: true    
+statements:
+  if: if (CONDITION)
+  else-if: else if (CONDITION)
+  else: else
+  for-loop: for (INITIAL; CONDITION; ITERATION)
+  while-loop: while (CONDITION)
+  trailer: ;
+types: required
+  char: char
+  boolean: bool
+  int8: int8_t
+  int16: int16_t
+  int32: int32_t
+  int64: int64_t
+  int128: none
+  uint8: uint8_t
+  uint16: uint16_t
+  uint32: uint32_t
+  uint64: none
+  uint128: none
+  float32: float
+  float64: double

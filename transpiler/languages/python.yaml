@@ -1,0 +1,38 @@
+name: Python
+extension: py
+# variants: 2.x, 3.x.
+header_file: no
+block-start-end: :,none
+comment: #
+module-identifier: no
+namespace-identifier: none
+generics: no
+sruct-identifier: class NAME
+classes: yes
+  identifier: class NAME
+  privacy: members
+  required: no
+  public-private-identifier: none, _
+functions:
+  identifier: def
+  public-private-identifier: none, _
+  static-identifier: @staticmethod
+  multiple-return: false
+  overloading: false  
+variables:
+  identifier: var
+  const-identifier: none
+  mutable-identifier: none  
+operators:
+  and-or: and, or
+  pre-post-increment: no
+  increment: yes
+  overloading: no    
+statements:
+  if: if CONDITION
+  else-if: elsif CONDITION
+  else: else
+  for-loop: no
+  while-loop: while CONDITION
+  trailer: none
+types: none
