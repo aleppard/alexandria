@@ -1,30 +1,38 @@
 name: Python
 extension: py
 # variants: 2.x, 3.x.
-header_file: no
-block-start-end: :,none
-comment: #
-module-identifier: no
+header-file: no
+block-start: ":"
+block-end: none
+comment: "#"
+module-identifier: none
 namespace-identifier: none
 generics: no
-sruct-identifier: class NAME
-classes: yes
+garbage-collection: yes
+struct-identifier: class NAME
+classes:
+  supported: yes
   identifier: class NAME
   privacy: members
   required: no
-  public-private-identifier: none, _
+  public-identifier: none
+  private-identifier: _NAME
+  static-identifier: "@staticmethod"
+  constructor: __init__
+  destructor: none
 functions:
   identifier: def
-  public-private-identifier: none, _
-  static-identifier: @staticmethod
+  public-identifier: none
+  private-identifier: _NAME
   multiple-return: false
   overloading: false  
 variables:
-  identifier: var
+  identifier: none
   const-identifier: none
   mutable-identifier: none  
 operators:
-  and-or: and, or
+  and: and
+  or: or         
   pre-post-increment: no
   increment: yes
   overloading: no    
@@ -32,7 +40,9 @@ statements:
   if: if CONDITION
   else-if: elsif CONDITION
   else: else
-  for-loop: no
-  while-loop: while CONDITION
+  for: none
+  while: while CONDITION
+  return: return VALUE  
   trailer: none
-types: none
+types:
+  specified: no

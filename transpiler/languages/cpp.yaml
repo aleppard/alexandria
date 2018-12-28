@@ -2,29 +2,37 @@ name: C++
 extension: cpp
 # variants: with exceptions, without exceptions, with templates, without templates
 header_file: yes
-block-start-end: {,}
+block-start: "{"
+block-end: "}"
 comment: ///
-module-identifier: no
+module-identifier: none
 generics: yes
+garbage-collection: no
 namespace-identifier: namespace NAME
 sruct-identifier: struct NAME
-classes: yes
+classes:
+  supported: yes
   identifier: class NAME
   privacy: block
   required: no
-  public-private-identifier: public,none
+  public-identifier: public
+  private-identifier: private
+  static-identifier: static
+  constructor: NAME
+  destructor: ~NAME
 functions:
   identifier: none
-  public-private-identifier: none
-  static-identifier: static
-  multiple-return: false
-  overloading: true  
+  public-identifier: none
+  private-identifier: none         
+  multiple-return: no
+  overloading: yes  
 variables:
   identifier: none
   const-identifier: const
-  mutable-identifier: none  
+  mutable-identifier: none
 operators:
-  and-or: &&, ||
+  and: "&&"
+  or: "||"
   pre-post-increment: yes
   increment: yes
   overloading: true    
@@ -32,10 +40,12 @@ statements:
   if: if (CONDITION)
   else-if: else if (CONDITION)
   else: else
-  for-loop: for (INITIAL; CONDITION; ITERATION)
-  while-loop: while (CONDITION)
+  for: for (INITIAL; CONDITION; ITERATION)
+  while: while (CONDITION)
+  return: return (VALUE)  
   trailer: ;
-types: required
+types:
+  specified: yes
   char: char
   boolean: bool
   int8: int8_t

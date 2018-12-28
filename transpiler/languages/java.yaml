@@ -1,30 +1,37 @@
 name: Java
 extension: java
-header_file: no
-header_file: no
-block-start-end: {,}
-comment: ///
+header-file: none
+block-start: "{"
+block-end: "}"
+comment: "///"
 module-identifier: package org.alexnadria.NAME;
 namespace-identifier: none
 generics: yes
-sruct-identifier: class NAME
-classes: yes
+garbage-collection: yes
+struct-identifier: class NAME
+classes:
+  supported: yes
   identifier: class NAME
   privacy: members
   required: yes
-  public-private-identifier: public,private
+  public-identifier: public
+  private-identifier: private
+  static-identifier: static
+  constructor: NAME
+  destructor: none
 functions:
   identifier: none
-  public-private-identifier: none
-  static-identifier: static
+  public-identifier: public
+  private-identifier: private        
   multiple-return: true
   overloading: true
 variables:
   identifier: none
-  const-identifier: const
+  const-identifier: final
   mutable-identifier: none  
 operators:
-  and-or: &&, ||
+  and: "&&"
+  or: "||"
   pre-post-increment: yes
   increment: yes
   overloading: no    
@@ -32,10 +39,12 @@ statements:
   if: if (CONDITION)
   else-if: else if (CONDITION)
   else: else
-  for-loop: for (INITIAL; CONDITION; ITERATION)
-  while-loop: while (CONDITION)
+  for: for (INITIAL; CONDITION; ITERATION)
+  while: while (CONDITION)
+  return: return (VALUE)
   trailer: ;
-types: required
+types:
+  specified: yes
   char: char
   boolean: boolean
   int8: byte
@@ -43,10 +52,10 @@ types: required
   int32: int
   int64: long
   int128: none
-  uint8: none
-  uint16: none
-  uint32: none
-  uint64: none
+  uint8: byte
+  uint16: short
+  uint32: int
+  uint64: long
   uint128: none
   float32: float
   float64: double
