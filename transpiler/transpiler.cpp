@@ -1,10 +1,3 @@
-/*
-
-clang transpiler.cpp -I/usr/local/opt/llvm/include/ -std=c++14 -L/usr/local/opt/llvm/lib/ -lLLVMLTO -lLLVMPasses -lLLVMObjCARCOpts -lLLVMSymbolize -lLLVMDebugInfoPDB -lLLVMDebugInfoDWARF -lLLVMMIRParser -lLLVMFuzzMutate -lLLVMCoverage -lLLVMTableGen -lLLVMDlltoolDriver -lLLVMOrcJIT -lLLVMXCoreDisassembler -lLLVMXCoreCodeGen -lLLVMXCoreDesc -lLLVMXCoreInfo -lLLVMXCoreAsmPrinter -lLLVMSystemZDisassembler -lLLVMSystemZCodeGen -lLLVMSystemZAsmParser -lLLVMSystemZDesc -lLLVMSystemZInfo -lLLVMSystemZAsmPrinter -lLLVMSparcDisassembler -lLLVMSparcCodeGen -lLLVMSparcAsmParser -lLLVMSparcDesc -lLLVMSparcInfo -lLLVMSparcAsmPrinter -lLLVMPowerPCDisassembler -lLLVMPowerPCCodeGen -lLLVMPowerPCAsmParser -lLLVMPowerPCDesc -lLLVMPowerPCInfo -lLLVMPowerPCAsmPrinter -lLLVMNVPTXCodeGen -lLLVMNVPTXDesc -lLLVMNVPTXInfo -lLLVMNVPTXAsmPrinter -lLLVMMSP430CodeGen -lLLVMMSP430Desc -lLLVMMSP430Info -lLLVMMSP430AsmPrinter -lLLVMMipsDisassembler -lLLVMMipsCodeGen -lLLVMMipsAsmParser -lLLVMMipsDesc -lLLVMMipsInfo -lLLVMMipsAsmPrinter -lLLVMLanaiDisassembler -lLLVMLanaiCodeGen -lLLVMLanaiAsmParser -lLLVMLanaiDesc -lLLVMLanaiAsmPrinter -lLLVMLanaiInfo -lLLVMHexagonDisassembler -lLLVMHexagonCodeGen -lLLVMHexagonAsmParser -lLLVMHexagonDesc -lLLVMHexagonInfo -lLLVMBPFDisassembler -lLLVMBPFCodeGen -lLLVMBPFAsmParser -lLLVMBPFDesc -lLLVMBPFInfo -lLLVMBPFAsmPrinter -lLLVMARMDisassembler -lLLVMARMCodeGen -lLLVMARMAsmParser -lLLVMARMDesc -lLLVMARMInfo -lLLVMARMAsmPrinter -lLLVMARMUtils -lLLVMAMDGPUDisassembler -lLLVMAMDGPUCodeGen -lLLVMAMDGPUAsmParser -lLLVMAMDGPUDesc -lLLVMAMDGPUInfo -lLLVMAMDGPUAsmPrinter -lLLVMAMDGPUUtils -lLLVMAArch64Disassembler -lLLVMAArch64CodeGen -lLLVMAArch64AsmParser -lLLVMAArch64Desc -lLLVMAArch64Info -lLLVMAArch64AsmPrinter -lLLVMAArch64Utils -lLLVMObjectYAML -lLLVMLibDriver -lLLVMOption -lLLVMWindowsManifest -lLLVMX86Disassembler -lLLVMX86AsmParser -lLLVMX86CodeGen -lLLVMGlobalISel -lLLVMSelectionDAG -lLLVMAsmPrinter -lLLVMX86Desc -lLLVMMCDisassembler -lLLVMX86Info -lLLVMX86AsmPrinter -lLLVMX86Utils -lLLVMMCJIT -lLLVMLineEditor -lLLVMInterpreter -lLLVMExecutionEngine -lLLVMRuntimeDyld -lLLVMCodeGen -lLLVMTarget -lLLVMCoroutines -lLLVMipo -lLLVMInstrumentation -lLLVMVectorize -lLLVMScalarOpts -lLLVMLinker -lLLVMIRReader -lLLVMAsmParser -lLLVMInstCombine -lLLVMBitWriter -lLLVMAggressiveInstCombine -lLLVMTransformUtils -lLLVMAnalysis -lLLVMProfileData -lLLVMObject -lLLVMMCParser -lLLVMMC -lLLVMDebugInfoCodeView -lLLVMDebugInfoMSF -lLLVMBitReader -lLLVMCore -lLLVMBinaryFormat -lLLVMSupport -lLLVMDemangle -lclangFrontend -lclangSerialization -lclangDriver -lclangTooling -lclangParse -lclangSema -lclangAnalysis -lclangRewriteFrontend -lclangRewrite -lclangEdit -lclangAST -lclangLex -lclangBasic -lclangASTMatchers -lcurses -lz -lstdc++
-
-*/
-
-
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/Decl.h"
 #include "clang/AST/Expr.h"
@@ -13,10 +6,205 @@ clang transpiler.cpp -I/usr/local/opt/llvm/include/ -std=c++14 -L/usr/local/opt/
 #include "clang/Frontend/FrontendAction.h"
 #include "clang/Tooling/Tooling.h"
 
+#include "yaml-cpp/yaml.h"
+
 #include <fstream>
 #include <iostream>
+#include <regex>
 #include <sstream>
 #include <string>
+
+std::string get(const YAML::Node& node,
+                std::string Name) {
+  try {
+    std::string value = node[Name].as<std::string>();
+    if (value == "none") value = "";
+    return value;
+  }
+  catch (const std::exception& Exception) {
+    std::cerr << "Setting '" << Name << "' missing or bad type.\n";
+    return "";
+  }
+}
+
+bool isTrue(const std::string& Value) {
+  if (Value == "true" || Value == "yes" || Value == "required") return true;
+  return false;
+}
+
+struct Classes {
+  std::string mySupported;
+  std::string myIdentifier; // e.g. "class NAME"
+  std::string myPrivacy;
+  std::string myRequired;
+  std::string myPublicIdentifier;
+  std::string myPrivateIdentifier;
+  std::string myStaticIdentifier;  
+
+  void set(const YAML::Node& Node) {
+    mySupported = get(Node, "supported");
+
+    if (isTrue(mySupported)) {
+      myIdentifier = get(Node, "identifier");
+      myPrivacy = get(Node, "privacy");
+      myRequired = get(Node, "required");
+      myPublicIdentifier = get(Node, "public-identifier");
+      myPrivateIdentifier = get(Node, "private-identifier");
+      myStaticIdentifier = get(Node, "static-identifier");
+    }
+  }
+};
+
+struct Functions {
+  std::string myIdentifier; // e.g. "def NAME"
+  std::string myPublicIdentifier;
+  std::string myPrivateIdentifier;  
+  std::string myMultipleReturns;
+  std::string myOverloading; // e.g. sin(float), sin(double).
+
+  void set(const YAML::Node& Node) {
+    myIdentifier = get(Node, "identifier");
+    myPublicIdentifier = get(Node, "public-identifier");
+    myPrivateIdentifier = get(Node, "private-identifier");        
+    myMultipleReturns = get(Node, "multiple-return");
+    myOverloading = get(Node, "overloading");
+  }
+};
+
+struct Variables {
+  std::string myIdentifier; // e.g. "var NAME"
+  std::string myConstIdentifier; // e.g. const
+  std::string myMutableIdentifier; // e.g. mut
+
+  void set(const YAML::Node& Node) {
+    myIdentifier = get(Node, "identifier");
+    myConstIdentifier = get(Node, "const-identifier");
+    myMutableIdentifier = get(Node, "mutable-identifier");    
+  }
+};
+
+struct Operators {
+  std::string myAnd;
+  std::string myOr;
+  std::string myPrePostIncrement; // e.g. ++i, i++, --i & i--;
+  std::string myIncrement; // e.g. i +=
+  std::string myOverloading; // e.g. custom a + b
+
+  void set(const YAML::Node& Node) {
+    myAnd = get(Node, "and");
+    myOr = get(Node, "or");
+    myPrePostIncrement = get(Node, "pre-post-increment");
+    myIncrement = get(Node, "increment");
+    myOverloading = get(Node, "overloading");        
+  }
+};
+
+struct Statements {
+  std::string myIf;
+  std::string myElseIf;
+  std::string myElse;
+  std::string myFor;
+  std::string myWhile;
+  std::string myReturn;
+  std::string myTrailer;
+
+  void set(const YAML::Node& Node) {
+    myIf = get(Node, "if");
+    myElseIf = get(Node, "else-if");
+    myElse = get(Node, "else");
+    myFor = get(Node, "for");
+    myWhile = get(Node, "while");
+    myReturn = get(Node, "return");    
+    myTrailer = get(Node, "trailer");
+  }
+};
+
+struct Types {
+  std::string mySpecified;
+  std::string myChar;
+  std::string myBoolean;
+  std::string myInt8;
+  std::string myInt16;
+  std::string myInt32;
+  std::string myInt64;
+  std::string myInt128;  
+
+  std::string myUint8;
+  std::string myUint16;
+  std::string myUint32;
+  std::string myUint64;
+  std::string myUint128;  
+
+  std::string myFloat32;
+  std::string myFloat64;
+
+  void set(const YAML::Node& Node) {
+    mySpecified = get(Node, "specified");
+
+    if (mySpecified != "no") {
+      myChar = get(Node, "char");
+      myBoolean = get(Node, "boolean");
+      myInt8 = get(Node, "int8");
+      myInt16 = get(Node, "int16");
+      myInt32 = get(Node, "int32");
+      myInt64 = get(Node, "int64");
+      myInt128 = get(Node, "int128");
+      
+      myUint8 = get(Node, "uint8");
+      myUint16 = get(Node, "uint16");
+      myUint32 = get(Node, "uint32");
+      myUint64 = get(Node, "uint64");
+      myUint128 = get(Node, "uint128");
+      
+      myFloat32 = get(Node, "float32");
+      myFloat64 = get(Node, "float64");
+    }
+  }
+};
+
+struct Language {
+  Language(std::string filename) {
+    YAML::Node node = YAML::LoadFile(filename);
+
+    myName = get(node, "name");
+    myExtension = get(node, "extension");
+    myHeaderFile = get(node, "header-file");
+    myBlockStart = get(node, "block-start");
+    myBlockEnd = get(node, "block-end");    
+    myComment = get(node, "comment");
+    myModuleIdentifier = get(node, "module-identifier");
+    myGenerics = get(node, "generics");
+    myGarbageCollection = get(node, "garbage-collection");
+    myNamespaceIdentifier = get(node, "namespace-identifier");
+    myStructIdentifier = get(node, "struct-identifier");
+
+    myClasses.set(node["classes"]);
+    myFunctions.set(node["functions"]);
+    myVariables.set(node["variables"]);
+    myOperators.set(node["operators"]);
+    myStatements.set(node["statements"]);
+    myTypes.set(node["types"]);
+  }
+
+  std::string myName;
+  std::string myExtension;
+  std::string myHeaderFile;
+  std::string myBlockStart;
+  std::string myBlockEnd;
+  std::string myComment;
+  std::string myModuleIdentifier;
+  std::string myGenerics;
+  std::string myGarbageCollection;
+  std::string myNamespaceIdentifier;
+  std::string myStructIdentifier;
+  
+  Classes myClasses;
+  Functions myFunctions;
+  Variables myVariables;
+  Operators myOperators;
+  Statements myStatements;
+  Types myTypes;
+};
 
 class OutputFile {
 
@@ -147,23 +335,43 @@ protected:
   }
 };
 
-class JavaTranspiler : public BaseTranspiler {
-
+// This is a generic language transpiler based off of the YAML configuration
+// file.
+class GenericTranspiler : public BaseTranspiler {
 public:
-  JavaTranspiler(std::string ModuleName) : myModuleName(ModuleName),
-                                           myOutputFile(ModuleName, "java")
+  GenericTranspiler(Language language,
+                    std::string ModuleName) : myLanguage(language),
+                                              myModuleName(ModuleName),
+                                              myOutputFile(ModuleName,
+                                                           language.myExtension)
   {}
-  
+
   void transpile(clang::TranslationUnitDecl* translationUnitDecl) {
-    myOutputFile.write("package org.alexandria.");
-    myOutputFile.writeLine(myModuleName);
-    myOutputFile.newLine();
+    // Does the language require a module or package identier?
+    if (myLanguage.myModuleIdentifier != "") {
+      std::string moduleIdentifier = myLanguage.myModuleIdentifier;
+      moduleIdentifier = std::regex_replace(moduleIdentifier,
+                                            std::regex("NAME"),
+                                            myModuleName);
+      myOutputFile.writeLine(moduleIdentifier);
+      myOutputFile.newLine();
+    }
 
-    myOutputFile.write("public class ");
-    myOutputFile.writeLine(myModuleName);
-    myOutputFile.writeLine("{");
+    // Does this language require everything to be in a class?
+    if (isTrue(myLanguage.myClasses.myRequired)) {
+      std::string classIdentifier = myLanguage.myClasses.myIdentifier;
+      classIdentifier = std::regex_replace(classIdentifier,
+                                           std::regex("NAME"),
+                                           myModuleName);
+      if (myLanguage.myClasses.myPublicIdentifier != "") {
+        classIdentifier = myLanguage.myClasses.myPublicIdentifier + " " +
+          classIdentifier;
+      }
 
-    myOutputFile.increaseIndent(2);
+      myOutputFile.write(classIdentifier);
+      myOutputFile.writeLine(myLanguage.myBlockStart);
+      myOutputFile.increaseIndent(2);
+    }
     
     for (auto i = translationUnitDecl->decls_begin();
          i != translationUnitDecl->decls_end(); ++i) {
@@ -171,17 +379,65 @@ public:
         myOutputFile.newLine();
     }
 
-    myOutputFile.decreaseIndent(2); 
-
-    myOutputFile.writeLine("}");
+    if (isTrue(myLanguage.myClasses.myRequired)) {    
+      myOutputFile.decreaseIndent(2); 
+      myOutputFile.writeLine(myLanguage.myBlockEnd);
+    }
   }
 
 private:
-
+  
   using BaseTranspiler::transpile;
 
-  static std::string cppTypeToJavaType(clang::QualType cppType) {
-    return cppType.getAsString();
+  std::string cppTypeToTargetType(clang::QualType cppType) {
+    const std::string cppTypeString = cppType.getAsString();
+    std::string targetTypeString;
+
+    if (cppTypeString == "char") targetTypeString = myLanguage.myTypes.myChar;
+    else if (cppTypeString == "bool")
+      targetTypeString = myLanguage.myTypes.myBoolean;
+
+    else if (cppTypeString == "int8_t")
+      targetTypeString = myLanguage.myTypes.myInt8;
+    else if (cppTypeString == "int16_t" ||
+             cppTypeString == "short")
+      targetTypeString = myLanguage.myTypes.myInt16;
+    else if (cppTypeString == "int32_t" ||
+             cppTypeString == "int")
+      targetTypeString = myLanguage.myTypes.myInt32;  
+    else if (cppTypeString == "int64_t" ||
+             cppTypeString == "long")
+      targetTypeString = myLanguage.myTypes.myInt64;  
+    else if (cppTypeString == "int128_t")
+      targetTypeString = myLanguage.myTypes.myInt128;  
+    
+    else if (cppTypeString == "uint8_t")
+      targetTypeString = myLanguage.myTypes.myUint8;
+    else if (cppTypeString == "uint16_t" ||
+             cppTypeString == "unsigned short")
+      targetTypeString = myLanguage.myTypes.myUint16;
+    else if (cppTypeString == "uint32_t" ||
+             cppTypeString == "unsigned int")
+      targetTypeString = myLanguage.myTypes.myUint32;  
+    else if (cppTypeString == "uint64_t" ||
+             cppTypeString == "unsigned long")
+      targetTypeString = myLanguage.myTypes.myUint64;  
+    else if (cppTypeString == "uint128_t")
+      targetTypeString = myLanguage.myTypes.myUint128;  
+
+    else if (cppTypeString == "float")
+      targetTypeString = myLanguage.myTypes.myFloat32;
+    else if (cppTypeString == "double")
+      targetTypeString = myLanguage.myTypes.myFloat64;  
+    else {
+      // TODO
+    }
+    
+    if (targetTypeString == "none") {
+      // TODO if the type is not supported then don't emit that function.
+    }
+
+    return targetTypeString;
   }
   
   void transpile(clang::FunctionDecl* functionDecl) override
@@ -189,10 +445,37 @@ private:
     std::string name =
       functionDecl->getNameInfo().getName().getAsString();
 
-    std::string functionDeclaration = "public static ";
+    bool isClass = false;
+    
+    // Does this language require everything to be in a class?
+    if (isTrue(myLanguage.myClasses.myRequired)) {
+      // Yes. In which case this function will be in a clas.
+      isClass = true;
+    }
 
-    functionDeclaration += cppTypeToJavaType(functionDecl->getReturnType());
-    functionDeclaration += " ";
+    std::string functionDeclaration;
+
+    if (myLanguage.myFunctions.myIdentifier != "") {
+      functionDeclaration += myLanguage.myFunctions.myIdentifier;
+      functionDeclaration += " ";
+    }
+    
+    if (myLanguage.myFunctions.myPublicIdentifier != "") {
+      functionDeclaration += myLanguage.myFunctions.myPublicIdentifier;
+      functionDeclaration += " ";
+    }
+
+    if (isClass &&
+        myLanguage.myClasses.myStaticIdentifier != "") {
+      functionDeclaration += myLanguage.myClasses.myStaticIdentifier;
+      functionDeclaration += " ";      
+    }
+
+    if (myLanguage.myTypes.mySpecified != "no") {
+      functionDeclaration += cppTypeToTargetType(functionDecl->getReturnType());
+      functionDeclaration += " ";
+    }
+
     functionDeclaration += name;
     functionDeclaration += "(";
 
@@ -201,13 +484,15 @@ private:
     for (auto i = functionDecl->param_begin();
          i != functionDecl->param_end(); ++i) {
       if (!isFirst) functionDeclaration += ", ";
-      functionDeclaration += cppTypeToJavaType((*i)->getOriginalType());
-      functionDeclaration += " ";
+      if (myLanguage.myTypes.mySpecified != "no") {
+        functionDeclaration += cppTypeToTargetType((*i)->getOriginalType());
+        functionDeclaration += " ";
+      }
       functionDeclaration += (*i)->getNameAsString();
     }
 
     functionDeclaration += ")";
-    myOutputFile.writeLine(functionDeclaration);
+    myOutputFile.write(functionDeclaration);
 
     myOutputFile.increaseIndent(2);    
 
@@ -222,8 +507,14 @@ private:
 
   void transpile(clang::VarDecl* variableDecl) override {
     if (variableDecl->hasInit()) {
-      myOutputFile.write(cppTypeToJavaType(variableDecl->getType()));
-      myOutputFile.write(" ");
+      if (myLanguage.myVariables.myIdentifier != "") {
+        myOutputFile.write(myLanguage.myVariables.myIdentifier);
+        myOutputFile.write(" ");
+      }
+      if (myLanguage.myTypes.mySpecified != "no") {
+        myOutputFile.write(cppTypeToTargetType(variableDecl->getType()));
+        myOutputFile.write(" ");
+      }
       myOutputFile.write(variableDecl->getNameAsString());
       myOutputFile.write(" = ");
       transpile(variableDecl->getInit());
@@ -242,7 +533,15 @@ private:
     transpile(unaryOperator->getSubExpr());
 
     if (unaryOperator->isIncrementOp()) {
-      myOutputFile.write("++");
+      if (isTrue(myLanguage.myOperators.myPrePostIncrement)) {
+        myOutputFile.write("++");
+      }
+      else if (isTrue(myLanguage.myOperators.myIncrement)) {
+        myOutputFile.write(" += 1");
+      }
+      else {
+        // TODO: Not yet supported.
+      }
     }
   }
   
@@ -265,17 +564,17 @@ private:
   void transpile(clang::CompoundStmt* statement)
     override {
 
-    myOutputFile.writeLine("{");
+    myOutputFile.writeLine(myLanguage.myBlockStart);
 
     for (auto i = statement->body_begin();
          i != statement->body_end(); ++i) {
       if (transpile(*i)) {
-        myOutputFile.write(";");
+        myOutputFile.write(myLanguage.myStatements.myTrailer);
         myOutputFile.newLine();
       }
     }
 
-    myOutputFile.writeLine("}");    
+    myOutputFile.writeLine(myLanguage.myBlockEnd);
   }
 
   void transpile(clang::DeclStmt* statement)
@@ -286,164 +585,74 @@ private:
   }
   
   void transpile(clang::ForStmt* statement) override {
-    myOutputFile.write("for (");
-    transpile(statement->getInit());
-    myOutputFile.write("; ");
-    transpile(statement->getCond());
-    myOutputFile.write("; ");
-    transpile(statement->getInc());
-    myOutputFile.write(")");
-    myOutputFile.newLine();
+    // Does this language support for statements?
+    if (myLanguage.myStatements.myFor != "") {
+      // Yes.
+      const std::string forStatement = myLanguage.myStatements.myFor;
+ 
+      const size_t initialOffset = forStatement.find("INITIAL");
+      myOutputFile.write(forStatement.substr(0, initialOffset));
+      transpile(statement->getInit());
 
-    myOutputFile.increaseIndent(2);    
-    transpile(statement->getBody());
-    myOutputFile.decreaseIndent(2);
-  }
+      const size_t conditionOffset = forStatement.find("CONDITION");      
+      size_t startOffset = initialOffset + strlen("INITIAL");
+      myOutputFile.write(forStatement.substr(startOffset,
+                                             conditionOffset - startOffset));
+      transpile(statement->getCond());
 
-  void transpile(clang::ReturnStmt* statement) override {
-    myOutputFile.write("return ");
-    transpile(statement->getRetValue());
-  }
+      const size_t iterationOffset = forStatement.find("ITERATION");      
+      startOffset = conditionOffset + strlen("CONDITION");
+      myOutputFile.write(forStatement.substr(startOffset,
+                                             iterationOffset - startOffset));
+      transpile(statement->getInc());
 
-  std::string myModuleName;
-  OutputFile myOutputFile;
-};
+      startOffset = iterationOffset + strlen("ITERATION");
+      myOutputFile.write(forStatement.substr(startOffset,
+                                             forStatement.length() -
+                                             startOffset));
 
-class PythonTranspiler : public BaseTranspiler {
-
-public:
-  PythonTranspiler(std::string ModuleName) : myModuleName(ModuleName),
-                                             myOutputFile(ModuleName, "py")
-  {}
-  
-  void transpile(clang::TranslationUnitDecl* translationUnitDecl) {
-    for (auto i = translationUnitDecl->decls_begin();
-         i != translationUnitDecl->decls_end(); ++i) {
-      if (transpile(*i)) 
-        myOutputFile.newLine();
-    }
-  }
-
-private:
-
-  using BaseTranspiler::transpile;
-  
-  void transpile(clang::FunctionDecl* functionDecl) override
-  {
-    std::string name =
-      functionDecl->getNameInfo().getName().getAsString();
-
-    std::string functionDeclaration = "def ";
-    functionDeclaration += name;
-    functionDeclaration += "(";
-
-    bool isFirst = true;
-    
-    for (auto i = functionDecl->param_begin();
-         i != functionDecl->param_end(); ++i) {
-      if (!isFirst) functionDeclaration += ", ";
-      functionDeclaration += (*i)->getNameAsString();
-    }
-
-    functionDeclaration += "):";
-    myOutputFile.writeLine(functionDeclaration);
-
-    myOutputFile.increaseIndent(2);    
-
-    if (functionDecl->hasBody()) {
-      transpile(functionDecl->getBody());
+      myOutputFile.increaseIndent(2);    
+      transpile(statement->getBody());
+      myOutputFile.decreaseIndent(2);
     }
     else {
-      myOutputFile.writeLine("pass");
+      // No. Convert the for-loop to a while-loop.
+      transpile(statement->getInit());
+      myOutputFile.newLine();
+
+      const std::string whileStatement = myLanguage.myStatements.myWhile;
+
+      const size_t initialOffset = whileStatement.find("CONDITION");
+      myOutputFile.write(whileStatement.substr(0, initialOffset));
+
+      transpile(statement->getCond());
+
+      size_t startOffset = initialOffset + strlen("CONDITION");
+      myOutputFile.write(whileStatement.substr(startOffset,
+                                               whileStatement.length() -
+                                               startOffset));
+      
+      myOutputFile.increaseIndent(2);    
+      transpile(statement->getBody());
+      transpile(statement->getInc());
+      myOutputFile.decreaseIndent(2);
     }
-
-    myOutputFile.decreaseIndent(2);    
-
-    myOutputFile.newLine();
-  }
-
-  void transpile(clang::VarDecl* variableDecl) override {
-    if (variableDecl->hasInit()) {
-      myOutputFile.write(variableDecl->getNameAsString());
-      myOutputFile.write(" = ");
-      transpile(variableDecl->getInit());
-    }
-  }
-
-  void transpile(clang::BinaryOperator* binaryOperator) override {
-    transpile(binaryOperator->getLHS());
-    myOutputFile.write(" ");
-    myOutputFile.write(binaryOperator->getOpcodeStr());
-    myOutputFile.write(" ");
-    transpile(binaryOperator->getRHS());
-  }
-
-  void transpile(clang::UnaryOperator* unaryOperator) override {
-    transpile(unaryOperator->getSubExpr());
-
-    if (unaryOperator->isIncrementOp()) {
-      myOutputFile.write(" += 1");
-    }
-  }
-  
-  void transpile(clang::DeclRefExpr* expression)
-    override {
-    myOutputFile.write(expression->getNameInfo().getName().getAsString());
-  }
-  
-  void transpile(clang::ImplicitCastExpr* expression)
-    override {
-    transpile(expression->getSubExpr());
-  }
-  
-  void transpile(clang::IntegerLiteral* integerLiteral)
-    override {
-    myOutputFile.write
-      (std::to_string(integerLiteral->getValue().getLimitedValue()));
-  }
-    
-  void transpile(clang::CompoundStmt* statement)
-    override {
-    for (auto i = statement->body_begin();
-         i != statement->body_end(); ++i) {
-      if (transpile(*i))
-        myOutputFile.newLine();
-    }
-  }
-
-  void transpile(clang::DeclStmt* statement)
-    override {
-    if (statement->isSingleDecl()) {
-      transpile(statement->getSingleDecl());
-    }
-  }
-  
-  void transpile(clang::ForStmt* statement) override {
-    // TODO A better implementation would be to use range().
-    // Use xrange() for Python 2.x and range() for Python 3.x.
-    // TODO: Another advantage of the transpiler is that it can
-    // target multiple variants of a language (e.g. Python 2.x/3.x,
-    // Perl 5?, 6+?).
-    transpile(statement->getInit());
-    myOutputFile.newLine();
-    myOutputFile.write("while ");
-    transpile(statement->getCond());
-    myOutputFile.write(":");
-    myOutputFile.newLine();
-
-    myOutputFile.increaseIndent(2);    
-    transpile(statement->getBody());
-    transpile(statement->getInc());
-    myOutputFile.decreaseIndent(2);
   }
 
   void transpile(clang::ReturnStmt* statement) override {
-    myOutputFile.write("return ");
+    std::string returnStatement = myLanguage.myStatements.myReturn;
+    
+    const size_t initialOffset = returnStatement.find_first_of("VALUE");
+    myOutputFile.write(returnStatement.substr(0, initialOffset));
     transpile(statement->getRetValue());
-  }
 
+    myOutputFile.write(returnStatement.substr(initialOffset + strlen("VALUE"),
+                                              returnStatement.length()));
+  }
+  
+  Language myLanguage;
   std::string myModuleName;
-  OutputFile myOutputFile;
+  OutputFile myOutputFile;  
 };
 
 class TranspilerConsumer : public clang::ASTConsumer {
@@ -456,13 +665,22 @@ public:
     clang::TranslationUnitDecl *translationUnitDecl =
       Context.getTranslationUnitDecl();
 
+    // TODO Traverse language directory automatically.
     {
-      JavaTranspiler transpiler(myModuleName);
+      Language language("languages/java.yaml");
+      GenericTranspiler transpiler(language, myModuleName);
       transpiler.transpile(translationUnitDecl);
     }
-    
+
     {
-      PythonTranspiler transpiler(myModuleName);
+      Language language("languages/python.yaml");
+      GenericTranspiler transpiler(language, myModuleName);
+      transpiler.transpile(translationUnitDecl);
+    }
+
+    {
+      Language language("languages/c.yaml");
+      GenericTranspiler transpiler(language, myModuleName);
       transpiler.transpile(translationUnitDecl);
     }
   }
@@ -496,6 +714,8 @@ int main(int argc, char **argv) {
     std::string code = buffer.str();
 
     // TOOD Error if the file name does not contain a dot.
+
+    // Remove suffix, e.g. ".cpp".
     std::string moduleName;
     const size_t dotOffset = fileName.find_last_of('.');
     if (dotOffset == std::string::npos) {
@@ -504,7 +724,12 @@ int main(int argc, char **argv) {
     else {
       moduleName = fileName.substr(0, dotOffset);
     }
-    
+
+    const size_t slashOffset = moduleName.find_last_of('/');
+    if (slashOffset != std::string::npos) {
+      moduleName = moduleName.substr(slashOffset + 1, moduleName.length());
+    }
+
     clang::tooling::runToolOnCode(new TranspilerFrontendAction(moduleName),
                                   code);
   }
