@@ -21,7 +21,7 @@ classes:
   constructor: NAME
   destructor: ~NAME
 functions:
-  identifier: none
+  declaration: auto
   public-identifier: none
   private-identifier: none         
   multiple-return: no
@@ -30,23 +30,29 @@ variables:
   identifier: none
   const-identifier: const
   mutable-identifier: none
+  static-identifier: static  
 operators:
   and: "&&"
   or: "||"
   pre-post-increment: yes
   increment: yes
-  overloading: true    
+  overloading: true
+  cast: C  
 statements:
   if: if (CONDITION)
   else-if: else if (CONDITION)
   else: else
   for: for (INITIAL; CONDITION; ITERATION)
   while: while (CONDITION)
-  return: return (VALUE)  
+  return: return (VALUE)
+  switch: switch (CONDITION)
+  switch-case: "case VALUE:"
+  switch-default: "default:"
   trailer: ;
 types:
   specified: yes
   char: char
+  string: "std::string"
   boolean: bool
   int8: int8_t
   int16: int16_t

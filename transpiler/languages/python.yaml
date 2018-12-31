@@ -2,7 +2,7 @@ name: Python
 extension: py
 # variants: 2.x, 3.x.
 header-file: no
-block-start: ":"
+block-start: none
 block-end: none
 comment: "#"
 module-identifier: none
@@ -21,7 +21,7 @@ classes:
   constructor: __init__
   destructor: none
 functions:
-  identifier: def
+  declaration: "def NAME(ARGS):"
   public-identifier: none
   private-identifier: _NAME
   multiple-return: false
@@ -29,20 +29,26 @@ functions:
 variables:
   identifier: none
   const-identifier: none
-  mutable-identifier: none  
+  mutable-identifier: none
+  static-identifier: none
 operators:
   and: and
   or: or         
   pre-post-increment: no
   increment: yes
   overloading: no    
+  cast: function
 statements:
-  if: if CONDITION
-  else-if: elsif CONDITION
-  else: else
+  if: "if CONDITION:"
+  else-if: "elsif CONDITION:"
+  else: "else:"
   for: none
-  while: while CONDITION
-  return: return VALUE  
+  while: "while CONDITION:"
+  return: return VALUE
+  switch: none
+  switch-case: none
+  switch-default: none
   trailer: none
 types:
   specified: no
+  string: yes

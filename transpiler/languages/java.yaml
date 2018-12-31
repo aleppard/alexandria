@@ -20,7 +20,7 @@ classes:
   constructor: NAME
   destructor: none
 functions:
-  identifier: none
+  declaration: auto
   public-identifier: public
   private-identifier: private        
   multiple-return: true
@@ -28,13 +28,15 @@ functions:
 variables:
   identifier: none
   const-identifier: final
-  mutable-identifier: none  
+  mutable-identifier: none
+  static-identifier: static   
 operators:
   and: "&&"
   or: "||"
   pre-post-increment: yes
   increment: yes
-  overloading: no    
+  overloading: no
+  cast: C  
 statements:
   if: if (CONDITION)
   else-if: else if (CONDITION)
@@ -42,10 +44,14 @@ statements:
   for: for (INITIAL; CONDITION; ITERATION)
   while: while (CONDITION)
   return: return (VALUE)
+  switch: switch (CONDITION)
+  switch-case: "case VALUE:"
+  switch-default: "default:"
   trailer: ;
 types:
   specified: yes
   char: char
+  string: String
   boolean: boolean
   int8: byte
   int16: short
