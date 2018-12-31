@@ -1,5 +1,6 @@
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/Decl.h"
+#include "clang/AST/DeclTemplate.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/Stmt.h"
 #include "clang/Frontend/CompilerInstance.h"
@@ -9,10 +10,12 @@
 #include "yaml-cpp/yaml.h"
 
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <regex>
 #include <sstream>
 #include <string>
+#include <vector>
 
 std::string get(const YAML::Node& node,
                 std::string Name) {
@@ -56,14 +59,14 @@ struct Classes {
 };
 
 struct Functions {
-  std::string myIdentifier; // e.g. "def NAME"
+  std::string myDeclaration; // e.g. "def NAME(ARGS):"
   std::string myPublicIdentifier;
   std::string myPrivateIdentifier;  
   std::string myMultipleReturns;
   std::string myOverloading; // e.g. sin(float), sin(double).
 
   void set(const YAML::Node& Node) {
-    myIdentifier = get(Node, "identifier");
+    myDeclaration = get(Node, "declaration");
     myPublicIdentifier = get(Node, "public-identifier");
     myPrivateIdentifier = get(Node, "private-identifier");        
     myMultipleReturns = get(Node, "multiple-return");
@@ -75,11 +78,13 @@ struct Variables {
   std::string myIdentifier; // e.g. "var NAME"
   std::string myConstIdentifier; // e.g. const
   std::string myMutableIdentifier; // e.g. mut
+  std::string myStaticIdentifier; // e.g. static
 
   void set(const YAML::Node& Node) {
     myIdentifier = get(Node, "identifier");
     myConstIdentifier = get(Node, "const-identifier");
-    myMutableIdentifier = get(Node, "mutable-identifier");    
+    myMutableIdentifier = get(Node, "mutable-identifier");
+    myStaticIdentifier = get(Node, "static-identifier");        
   }
 };
 
@@ -89,13 +94,15 @@ struct Operators {
   std::string myPrePostIncrement; // e.g. ++i, i++, --i & i--;
   std::string myIncrement; // e.g. i +=
   std::string myOverloading; // e.g. custom a + b
-
+  std::string myCast; // C or function.
+  
   void set(const YAML::Node& Node) {
     myAnd = get(Node, "and");
     myOr = get(Node, "or");
     myPrePostIncrement = get(Node, "pre-post-increment");
     myIncrement = get(Node, "increment");
-    myOverloading = get(Node, "overloading");        
+    myOverloading = get(Node, "overloading");
+    myCast = get(Node, "cast");
   }
 };
 
@@ -106,15 +113,22 @@ struct Statements {
   std::string myFor;
   std::string myWhile;
   std::string myReturn;
-  std::string myTrailer;
+  std::string mySwitch;
+  std::string mySwitchCase;
+  std::string mySwitchDefault;
 
+  std::string myTrailer;
+  
   void set(const YAML::Node& Node) {
     myIf = get(Node, "if");
     myElseIf = get(Node, "else-if");
     myElse = get(Node, "else");
     myFor = get(Node, "for");
     myWhile = get(Node, "while");
-    myReturn = get(Node, "return");    
+    myReturn = get(Node, "return");
+    mySwitch = get(Node, "switch");
+    mySwitchCase = get(Node, "switch-case");
+    mySwitchDefault = get(Node, "switch-default");    
     myTrailer = get(Node, "trailer");
   }
 };
@@ -258,16 +272,29 @@ class BaseTranspiler {
 
 public:
   virtual void transpile(clang::FunctionDecl* functionDecl) = 0;
+  virtual void transpile(clang::FunctionTemplateDecl* functionTemplateDecl) =
+    0;  
+  virtual void transpile(clang::NamespaceDecl* namespaceDecl) = 0;
   virtual void transpile(clang::VarDecl* variableDecl) = 0;
+  
   virtual void transpile(clang::BinaryOperator* binaryOperator) = 0;
+  virtual void transpile(clang::CallExpr* callExpression) = 0;
+  virtual void transpile(clang::CStyleCastExpr* castExpression) = 0;
+  virtual void transpile(clang::ParenExpr* unaryOperator) = 0;
   virtual void transpile(clang::UnaryOperator* unaryOperator) = 0;
   virtual void transpile(clang::DeclRefExpr* expression) = 0;
   virtual void transpile(clang::ImplicitCastExpr* expression) = 0;
+  virtual void transpile(clang::FloatingLiteral* floatingLiteral) = 0;
   virtual void transpile(clang::IntegerLiteral* integerLiteral) = 0;
+
+  virtual void transpile(clang::CaseStmt* statement) = 0;
+  virtual void transpile(clang::DefaultStmt* statement) = 0;    
   virtual void transpile(clang::CompoundStmt* statement) = 0;
   virtual void transpile(clang::DeclStmt* statement) = 0;
   virtual void transpile(clang::ForStmt* statement) = 0;
+  virtual void transpile(clang::IfStmt* statement) = 0;
   virtual void transpile(clang::ReturnStmt* statement) = 0;
+  virtual void transpile(clang::SwitchStmt* statement) = 0;  
 
 protected:
   bool transpile(clang::Decl* declaration) {
@@ -276,8 +303,16 @@ protected:
       transpile(clang::cast<clang::FunctionDecl>(declaration));
       return true;
     }
+    if (clang::isa<clang::FunctionTemplateDecl>(declaration)) {
+      transpile(clang::cast<clang::FunctionTemplateDecl>(declaration));
+      return true;
+    }
     else if (clang::isa<clang::VarDecl>(declaration)) {
       transpile(clang::cast<clang::VarDecl>(declaration));
+      return true;
+    }
+    else if (clang::isa<clang::NamespaceDecl>(declaration)) {
+      transpile(clang::cast<clang::NamespaceDecl>(declaration));
       return true;
     }
 
@@ -289,6 +324,14 @@ protected:
       transpile(clang::cast<clang::BinaryOperator>(expression));
       return true;
     }
+    else if (clang::isa<clang::CallExpr>(expression)) {
+      transpile(clang::cast<clang::CallExpr>(expression));
+      return true;
+    }
+    else if (clang::isa<clang::CStyleCastExpr>(expression)) {
+      transpile(clang::cast<clang::CStyleCastExpr>(expression));
+      return true;
+    }
     else if (clang::isa<clang::DeclRefExpr>(expression)) {
       transpile(clang::cast<clang::DeclRefExpr>(expression));
       return true;
@@ -297,8 +340,16 @@ protected:
       transpile(clang::cast<clang::ImplicitCastExpr>(expression));
       return true;
     }
+    else if (clang::isa<clang::FloatingLiteral>(expression)) {
+      transpile(clang::cast<clang::FloatingLiteral>(expression));
+      return true;
+    }
     else if (clang::isa<clang::IntegerLiteral>(expression)) {
       transpile(clang::cast<clang::IntegerLiteral>(expression));
+      return true;
+    }
+    else if (clang::isa<clang::ParenExpr>(expression)) {
+      transpile(clang::cast<clang::ParenExpr>(expression));
       return true;
     }
     else if (clang::isa<clang::UnaryOperator>(expression)) {
@@ -311,7 +362,11 @@ protected:
 
   bool transpile(clang::Stmt* statement) {
 
-    if (clang::isa<clang::CompoundStmt>(statement)) {
+    if (clang::isa<clang::CaseStmt>(statement)) {
+      transpile(clang::cast<clang::CaseStmt>(statement));
+      return true;
+    }    
+    else if (clang::isa<clang::CompoundStmt>(statement)) {
       transpile(clang::cast<clang::CompoundStmt>(statement));
       return true;
     }
@@ -319,12 +374,24 @@ protected:
       transpile(clang::cast<clang::DeclStmt>(statement));
       return true;
     }
+    else if (clang::isa<clang::DefaultStmt>(statement)) {
+      transpile(clang::cast<clang::DefaultStmt>(statement));
+      return true;
+    }    
     else if (clang::isa<clang::ForStmt>(statement)) {
       transpile(clang::cast<clang::ForStmt>(statement));
       return true;
     }
+    else if (clang::isa<clang::IfStmt>(statement)) {
+      transpile(clang::cast<clang::IfStmt>(statement));
+      return true;
+    }
     else if (clang::isa<clang::ReturnStmt>(statement)) {
       transpile(clang::cast<clang::ReturnStmt>(statement));
+      return true;
+    }
+    else if (clang::isa<clang::SwitchStmt>(statement)) {
+      transpile(clang::cast<clang::SwitchStmt>(statement));
       return true;
     }
     else if (clang::isa<clang::Expr>(statement)) {
@@ -390,9 +457,21 @@ private:
   using BaseTranspiler::transpile;
 
   std::string cppTypeToTargetType(clang::QualType cppType) {
-    const std::string cppTypeString = cppType.getAsString();
+    const std::string cppTypeString =
+      cppType.getUnqualifiedType().getAsString();
     std::string targetTypeString;
 
+    if (cppType.isConstQualified()) {
+      if (myLanguage.myVariables.myConstIdentifier != "") {
+        myOutputFile.write(myLanguage.myVariables.myConstIdentifier);
+        myOutputFile.write(" ");
+      }
+    }
+    else if (myLanguage.myVariables.myMutableIdentifier != "") {
+      myOutputFile.write(myLanguage.myVariables.myMutableIdentifier);
+      myOutputFile.write(" ");
+    }
+        
     if (cppTypeString == "char") targetTypeString = myLanguage.myTypes.myChar;
     else if (cppTypeString == "bool")
       targetTypeString = myLanguage.myTypes.myBoolean;
@@ -439,7 +518,25 @@ private:
 
     return targetTypeString;
   }
-  
+
+  std::string transpileFunctionArguments(clang::FunctionDecl* functionDecl) {
+    std::string arguments;
+    bool isFirst = true;
+    
+    for (auto i = functionDecl->param_begin();
+         i != functionDecl->param_end(); ++i) {
+      if (!isFirst) arguments += ", ";
+      if (myLanguage.myTypes.mySpecified != "no") {
+        arguments += cppTypeToTargetType((*i)->getOriginalType());
+        arguments += " ";
+      }
+      arguments += (*i)->getNameAsString();
+      isFirst = false;
+    }
+
+    return arguments;
+  }
+
   void transpile(clang::FunctionDecl* functionDecl) override
   {
     std::string name =
@@ -455,69 +552,107 @@ private:
 
     std::string functionDeclaration;
 
-    if (myLanguage.myFunctions.myIdentifier != "") {
-      functionDeclaration += myLanguage.myFunctions.myIdentifier;
-      functionDeclaration += " ";
-    }
-    
-    if (myLanguage.myFunctions.myPublicIdentifier != "") {
-      functionDeclaration += myLanguage.myFunctions.myPublicIdentifier;
-      functionDeclaration += " ";
-    }
-
     if (isClass &&
         myLanguage.myClasses.myStaticIdentifier != "") {
       functionDeclaration += myLanguage.myClasses.myStaticIdentifier;
       functionDeclaration += " ";      
     }
 
-    if (myLanguage.myTypes.mySpecified != "no") {
-      functionDeclaration += cppTypeToTargetType(functionDecl->getReturnType());
+    if (myLanguage.myFunctions.myPublicIdentifier != "") {
+      functionDeclaration += myLanguage.myFunctions.myPublicIdentifier;
       functionDeclaration += " ";
     }
-
-    functionDeclaration += name;
-    functionDeclaration += "(";
-
-    bool isFirst = true;
     
-    for (auto i = functionDecl->param_begin();
-         i != functionDecl->param_end(); ++i) {
-      if (!isFirst) functionDeclaration += ", ";
+    if (myLanguage.myFunctions.myDeclaration != "auto") {
+      std::string declaration = myLanguage.myFunctions.myDeclaration;
+      declaration = std::regex_replace(declaration,
+                                       std::regex("NAME"),
+                                       name);
+      std::string arguments = transpileFunctionArguments(functionDecl);
+      declaration = std::regex_replace(declaration,
+                                       std::regex("ARGS"),
+                                       arguments);
+      functionDeclaration += declaration;
+    }
+    else {
       if (myLanguage.myTypes.mySpecified != "no") {
-        functionDeclaration += cppTypeToTargetType((*i)->getOriginalType());
+        functionDeclaration +=
+          cppTypeToTargetType(functionDecl->getReturnType());
         functionDeclaration += " ";
       }
-      functionDeclaration += (*i)->getNameAsString();
+      
+      functionDeclaration += name;
+      functionDeclaration += "(";
+      functionDeclaration += transpileFunctionArguments(functionDecl);
+      functionDeclaration += ")";
     }
 
-    functionDeclaration += ")";
     myOutputFile.write(functionDeclaration);
-
     myOutputFile.increaseIndent(2);    
-
+    
     if (functionDecl->hasBody()) {
       transpile(functionDecl->getBody());
     }
-
+    
     myOutputFile.decreaseIndent(2);
-
+      
     myOutputFile.newLine();
   }
 
+  void transpile(clang::FunctionTemplateDecl* functionDecl) override {
+
+    std::vector<std::string> parameters = {"DOUBLE"};
+    
+    for (auto i = functionDecl->spec_begin();
+         i != functionDecl->spec_end(); ++i) {
+      // TODO: Extract template parameter names from source code.
+    }
+
+    // TODO
+    transpile(functionDecl->getTemplatedDecl());
+  }
+  
+  void transpile(clang::NamespaceDecl* namespaceDecl) override {
+
+    // MYTODO: Write out namespace header...
+
+    for (auto i = namespaceDecl->decls_begin();
+         i != namespaceDecl->decls_end(); ++i) {
+      if (transpile(*i)) 
+        myOutputFile.newLine();
+    }
+  }
+  
   void transpile(clang::VarDecl* variableDecl) override {
+    // If this variable isn't declared and this langauge has no
+    // variable identifier or requires specifying variable types, then
+    // we can ignore the variable declaration.
+    if (!variableDecl->hasInit() &&
+        myLanguage.myVariables.myIdentifier == "" &&
+        myLanguage.myTypes.mySpecified == "no") return;
+
+    if (myLanguage.myVariables.myIdentifier != "") {
+      myOutputFile.write(myLanguage.myVariables.myIdentifier);
+      myOutputFile.write(" ");
+    }
+    if (myLanguage.myVariables.myStaticIdentifier != "" &&
+        variableDecl->getStorageDuration() ==
+        clang::StorageDuration::SD_Static) {
+      myOutputFile.write(myLanguage.myVariables.myStaticIdentifier);
+      myOutputFile.write(" ");
+    }
+
+    if (myLanguage.myTypes.mySpecified != "no") {
+      myOutputFile.write(cppTypeToTargetType(variableDecl->getType()));
+      myOutputFile.write(" ");
+    }
+
+    myOutputFile.write(variableDecl->getNameAsString());
+    
     if (variableDecl->hasInit()) {
-      if (myLanguage.myVariables.myIdentifier != "") {
-        myOutputFile.write(myLanguage.myVariables.myIdentifier);
-        myOutputFile.write(" ");
-      }
-      if (myLanguage.myTypes.mySpecified != "no") {
-        myOutputFile.write(cppTypeToTargetType(variableDecl->getType()));
-        myOutputFile.write(" ");
-      }
-      myOutputFile.write(variableDecl->getNameAsString());
       myOutputFile.write(" = ");
       transpile(variableDecl->getInit());
+      myOutputFile.write(myLanguage.myStatements.myTrailer);
     }
   }
 
@@ -529,10 +664,69 @@ private:
     transpile(binaryOperator->getRHS());
   }
 
-  void transpile(clang::UnaryOperator* unaryOperator) override {
-    transpile(unaryOperator->getSubExpr());
+  void transpile(clang::CallExpr* callExpression) override {
 
+    clang::FunctionDecl* functionDeclaration =
+      callExpression->getDirectCallee();
+    if (functionDeclaration != nullptr) {
+      myOutputFile.write(functionDeclaration->getNameInfo().getName().
+                         getAsString());
+    }
+    else {
+      myOutputFile.write("???");
+    }
+    
+    myOutputFile.write("(");
+
+    bool isFirst = true;
+    
+    for (auto i = callExpression->arg_begin();
+         i != callExpression->arg_end(); ++i) {
+      if (!isFirst) myOutputFile.write(", ");
+      transpile(*i);
+      isFirst = false;
+    }
+
+    myOutputFile.write(")");    
+  }
+  
+  void transpile(clang::CStyleCastExpr* castExpr) override {
+    const clang::QualType castType = castExpr->getTypeAsWritten();
+
+    if (myLanguage.myOperators.myCast == "C") {
+      myOutputFile.write("(");
+      myOutputFile.write(cppTypeToTargetType(castType));
+      myOutputFile.write(")");
+      transpile(castExpr->getSubExpr());
+    }
+    else {
+      if (myLanguage.myTypes.mySpecified != "no") {
+        myOutputFile.write(cppTypeToTargetType(castType));
+      }
+      else {
+        myOutputFile.write(castType.getUnqualifiedType().getAsString());
+      }
+      myOutputFile.write("(");
+      transpile(castExpr->getSubExpr());      
+      myOutputFile.write(")");            
+    }
+  }
+  
+  void transpile(clang::ParenExpr* parenExpr) override {
+    myOutputFile.write("(");
+    transpile(parenExpr->getSubExpr());
+    myOutputFile.write(")");    
+  }
+  
+  void transpile(clang::UnaryOperator* unaryOperator) override {
+
+    // TODO: How do we properly query for prefix "-"?
+    const std::string opCodeString = 
+      clang::UnaryOperator::getOpcodeStr(unaryOperator->getOpcode());
+    
     if (unaryOperator->isIncrementOp()) {
+      transpile(unaryOperator->getSubExpr());
+
       if (isTrue(myLanguage.myOperators.myPrePostIncrement)) {
         myOutputFile.write("++");
       }
@@ -542,6 +736,15 @@ private:
       else {
         // TODO: Not yet supported.
       }
+    }
+    else if (unaryOperator->isPrefix() ||
+             opCodeString == "-") {
+      myOutputFile.write("-");
+      transpile(unaryOperator->getSubExpr());
+    }
+    else {
+      // TODO: Not Supported
+      transpile(unaryOperator->getSubExpr());
     }
   }
   
@@ -560,7 +763,16 @@ private:
     myOutputFile.write(std::to_string
                        (integerLiteral->getValue().getLimitedValue()));
   }
-    
+
+  void transpile(clang::FloatingLiteral* floatingLiteral)
+    override {
+
+    std::ostringstream stream;
+    stream << std::setprecision(21);
+    stream << floatingLiteral->getValue().convertToDouble();
+    myOutputFile.write(stream.str());
+  }
+  
   void transpile(clang::CompoundStmt* statement)
     override {
 
@@ -581,6 +793,15 @@ private:
     override {
     if (statement->isSingleDecl()) {
       transpile(statement->getSingleDecl());
+    }
+    else {
+      const auto& declGroup = statement->getDeclGroup().getDeclGroup();
+
+      for (int i = 0; i < declGroup.size(); i++) {
+        transpile(declGroup[i]);
+        myOutputFile.write(myLanguage.myStatements.myTrailer);
+        myOutputFile.newLine();        
+      }
     }
   }
   
@@ -639,6 +860,46 @@ private:
     }
   }
 
+  void transpile(clang::IfStmt* statement, bool isElseIf) {
+    std::string ifStatement = (isElseIf? myLanguage.myStatements.myElseIf :
+                               myLanguage.myStatements.myIf);
+    
+    const size_t initialOffset = ifStatement.find_first_of("CONDITION");
+    myOutputFile.write(ifStatement.substr(0, initialOffset));
+    transpile(statement->getCond());
+    myOutputFile.write(ifStatement.substr(initialOffset + strlen("CONDITION"),
+                                          ifStatement.length()));
+
+    myOutputFile.increaseIndent(2);
+    if (!clang::isa<clang::CompoundStmt>(statement->getThen()))
+      myOutputFile.write(" ");
+    
+    transpile(statement->getThen());
+    myOutputFile.write(myLanguage.myStatements.myTrailer);
+      
+    myOutputFile.decreaseIndent(2);
+    myOutputFile.newLine();        
+
+    if (statement->getElse() != nullptr) {
+      if (clang::isa<clang::IfStmt>(statement->getElse())) {
+        transpile(clang::cast<clang::IfStmt>(statement->getElse()), true);
+      }
+      else {
+        std::string elseStatement = myLanguage.myStatements.myElse;
+        myOutputFile.write(elseStatement);
+        myOutputFile.write(" ");
+
+        myOutputFile.increaseIndent(2);
+        transpile(statement->getElse());
+        myOutputFile.decreaseIndent(2);        
+      }
+    }
+  }
+    
+  void transpile(clang::IfStmt* statement) override {
+    transpile(statement, false);
+  }
+
   void transpile(clang::ReturnStmt* statement) override {
     std::string returnStatement = myLanguage.myStatements.myReturn;
     
@@ -648,6 +909,102 @@ private:
 
     myOutputFile.write(returnStatement.substr(initialOffset + strlen("VALUE"),
                                               returnStatement.length()));
+  }
+
+  void transpile(clang::CaseStmt* statement) override {
+    // We should only get here if our target language supports the switch
+    // statement.
+    const std::string caseStatement = myLanguage.myStatements.mySwitchCase;
+
+    const size_t initialOffset = caseStatement.find("VALUE");
+    myOutputFile.write(caseStatement.substr(0, initialOffset));
+    transpile(statement->getLHS());
+    
+    const size_t startOffset = initialOffset + strlen("VALUE");
+    myOutputFile.write(caseStatement.substr(startOffset,
+                                            caseStatement.length() -
+                                            startOffset));
+    myOutputFile.write(" ");    
+    myOutputFile.increaseIndent(2);
+    transpile(statement->getSubStmt());
+    myOutputFile.decreaseIndent(2);      
+  }
+
+  void transpile(clang::DefaultStmt* statement) override {
+    // We should only get here if our target language supports the switch
+    // statement.
+    myOutputFile.write(myLanguage.myStatements.mySwitchDefault);
+    myOutputFile.write(" ");    
+    myOutputFile.increaseIndent(2);
+    transpile(statement->getSubStmt());
+    myOutputFile.decreaseIndent(2);      
+  }
+  
+  void transpile(clang::SwitchStmt* statement) override {
+    // Does this langauge support switch statements?
+    if (myLanguage.myStatements.mySwitch != "") {
+      // Yes.
+      const std::string switchStatement = myLanguage.myStatements.mySwitch;
+
+      const size_t initialOffset = switchStatement.find("CONDITION");
+      myOutputFile.write(switchStatement.substr(0, initialOffset));
+      transpile(statement->getCond());
+
+      const size_t startOffset = initialOffset + strlen("CONDITION");
+      myOutputFile.write(switchStatement.substr(startOffset,
+                                                switchStatement.length() -
+                                                startOffset));
+      myOutputFile.increaseIndent(2);    
+      transpile(statement->getBody());      
+      myOutputFile.decreaseIndent(2);      
+    }
+    else {
+      clang::CompoundStmt* compoundStatement =
+        clang::cast<clang::CompoundStmt>(statement->getBody());
+      bool isFirst = true;
+      
+      for (auto i = compoundStatement->body_begin();
+           i != compoundStatement->body_end(); ++i) {
+        if (clang::isa<clang::CaseStmt>(*i)) {
+          clang::CaseStmt* caseStatement =
+            clang::cast<clang::CaseStmt>(*i);
+
+          std::string ifStatement = (isFirst? myLanguage.myStatements.myIf :
+                                     myLanguage.myStatements.myElseIf);
+          
+          const size_t initialOffset = ifStatement.find("CONDITION");
+          myOutputFile.write(ifStatement.substr(0, initialOffset));
+          transpile(statement->getCond());
+          myOutputFile.write(" == ");
+          transpile(caseStatement->getLHS());
+          
+          const size_t startOffset = initialOffset + strlen("CONDITION");
+          myOutputFile.write(ifStatement.substr(startOffset,
+                                                ifStatement.length() -
+                                                startOffset));
+          myOutputFile.write(" ");
+          
+          myOutputFile.increaseIndent(2);    
+          transpile(caseStatement->getSubStmt());      
+          myOutputFile.decreaseIndent(2);
+          myOutputFile.newLine();
+        }
+        else {
+          clang::DefaultStmt* defaultStatement =
+            clang::cast<clang::DefaultStmt>(*i);
+
+          myOutputFile.write(myLanguage.myStatements.myElse);
+          myOutputFile.write(" ");
+ 
+          myOutputFile.increaseIndent(2);
+          transpile(defaultStatement->getSubStmt());
+          myOutputFile.decreaseIndent(2);
+          myOutputFile.newLine();          
+        }
+
+        isFirst = false;
+      }
+    }
   }
   
   Language myLanguage;
@@ -730,6 +1087,9 @@ int main(int argc, char **argv) {
       moduleName = moduleName.substr(slashOffset + 1, moduleName.length());
     }
 
+    //clang::tooling::CommonOptionsParser parser;
+    //clang::tooling::ClangTool Tool;
+    
     clang::tooling::runToolOnCode(new TranspilerFrontendAction(moduleName),
                                   code);
   }
